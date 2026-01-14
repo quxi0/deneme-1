@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, useLocation } from 'react-router-dom';
+import { NavLink, useLocation, useNavigate } from 'react-router-dom';
 import { NAV_LINKS } from '../constants';
 import { useAuth } from '../context/AuthContext';
 import { useProjects } from '../context/ProjectContext';
@@ -17,6 +17,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const { siteData } = useProjects();
   const { openConnect } = useUI();
   const location = useLocation();
+  const navigate = useNavigate();
   const [scrolled, setScrolled] = useState(false);
 
   useEffect(() => {
@@ -25,8 +26,45 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return () => window.removeEventListener('scroll', handleScroll);
   }, []);
 
+  const handleNavClick = (e: React.MouseEvent, link: { label: string, path: string }) => {
+    e.preventDefault();
+    
+    // Special handling for scrolling within Home
+    if (link.label === 'Portfolio' || link.label === 'Projects' || link.label === 'About') {
+      let targetId = 'about'; // Default to about for Portfolio/About
+      
+      if (link.label === 'Projects') {
+        targetId = 'portfolio';
+      } else if (link.label === 'Portfolio' || link.label === 'About') {
+        targetId = 'about';
+      }
+      
+      if (location.pathname !== '/') {
+        navigate('/');
+        // Wait for navigation then scroll
+        setTimeout(() => {
+          const el = document.getElementById(targetId);
+          el?.scrollIntoView({ behavior: 'smooth' });
+        }, 100);
+      } else {
+        const el = document.getElementById(targetId);
+        el?.scrollIntoView({ behavior: 'smooth' });
+      }
+    } else if (link.label === 'Contact') {
+      openConnect();
+    }
+  };
+
   return (
-    <div className="min-h-screen flex flex-col bg-[#050505] text-[#e5e5e5] selection:bg-white selection:text-black">
+    <div className="min-h-screen flex flex-col bg-[#050505] text-[#e5e5e5] selection:bg-white selection:text-black relative">
+      {/* Global Grain Texture */}
+      <div 
+        className="fixed inset-0 pointer-events-none z-[5] opacity-[0.04] mix-blend-overlay"
+        style={{ 
+          backgroundImage: `url("data:image/svg+xml,%3Csvg viewBox='0 0 400 400' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noiseFilter'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noiseFilter)'/%3E%3C/svg%3E")` 
+        }}
+      />
+
       <CustomCursor />
       <ConnectModal />
       <SocialHub />
@@ -43,29 +81,16 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </NavLink>
           
           <nav className="hidden md:flex items-center space-x-8">
-            {NAV_LINKS.map((link) => {
-              // Intercept Contact link to open modal
-              if (link.label === 'Contact') {
-                 return (
-                   <button 
-                     key={link.path}
-                     onClick={openConnect}
-                     className="text-xs uppercase tracking-[0.2em] text-gray-400 hover:text-white transition-colors mix-blend-difference"
-                   >
-                     {link.label}
-                   </button>
-                 );
-              }
-              return (
-                <a 
-                  key={link.path}
-                  href={link.path}
-                  className="text-xs uppercase tracking-[0.2em] text-gray-400 hover:text-white transition-colors mix-blend-difference"
-                >
-                  {link.label}
-                </a>
-              );
-            })}
+            {NAV_LINKS.map((link) => (
+              <a 
+                key={link.path}
+                href={link.path}
+                onClick={(e) => handleNavClick(e, link)}
+                className="text-xs uppercase tracking-[0.2em] text-gray-400 hover:text-white transition-colors mix-blend-difference cursor-pointer"
+              >
+                {link.label}
+              </a>
+            ))}
             
             {isAuthenticated ? (
                <div className="flex gap-4 border-l border-white/20 pl-6 ml-2">
@@ -80,7 +105,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         </div>
       </header>
 
-      <main className="flex-grow pt-0">
+      <main className="flex-grow pt-0 relative z-10">
         {children}
       </main>
 

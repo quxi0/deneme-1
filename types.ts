@@ -42,6 +42,8 @@ export interface ProjectContextType {
   addProject: (project: Project) => void;
   updateProject: (id: string, updatedProject: Partial<Project>) => void;
   deleteProject: (id: string) => void;
+  moveProjectUp: (id: string) => void;
+  moveProjectDown: (id: string) => void;
   updateProfile: (profile: Partial<Profile>) => void;
   updateSocials: (socials: SocialLink[]) => void;
 }

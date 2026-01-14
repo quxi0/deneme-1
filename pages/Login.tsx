@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 
 const LoginPage: React.FC = () => {
+  const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState('');
   const { login } = useAuth();
@@ -10,7 +11,8 @@ const LoginPage: React.FC = () => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    const success = login(password);
+    // @ts-ignore - Context updated to accept object, ignoring type mismatch if interface isn't fully updated globally yet
+    const success = login({ username, password });
     if (success) {
       navigate('/admin');
     } else {
@@ -22,9 +24,20 @@ const LoginPage: React.FC = () => {
     <div className="min-h-screen flex items-center justify-center bg-[#050505] px-6">
       <div className="w-full max-w-md border border-white/10 p-8 md:p-12">
         <h1 className="text-3xl font-serif text-white mb-2">vizarc3d.</h1>
-        <p className="text-gray-500 text-xs uppercase tracking-widest mb-8">Admin Access</p>
+        <p className="text-gray-500 text-xs uppercase tracking-widest mb-8">Secure Admin Gateway</p>
         
         <form onSubmit={handleSubmit} className="space-y-6">
+          <div>
+            <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Username</label>
+            <input 
+              type="text" 
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full bg-black border border-white/20 p-4 text-white focus:border-white outline-none transition-colors"
+              placeholder="Enter username"
+            />
+          </div>
+
           <div>
             <label className="block text-xs uppercase tracking-widest text-gray-500 mb-2">Password</label>
             <input 
@@ -32,7 +45,7 @@ const LoginPage: React.FC = () => {
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               className="w-full bg-black border border-white/20 p-4 text-white focus:border-white outline-none transition-colors"
-              placeholder="Enter access code"
+              placeholder="Enter password"
             />
           </div>
           

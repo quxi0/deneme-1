@@ -15,7 +15,8 @@
     "react-router-dom": "6.28.0",
     "nanoid": "5.0.9",
     "framer-motion": "11.0.8",
-    "gsap": "3.12.5"
+    "gsap": "3.12.5",
+    "firebase": "^12.7.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

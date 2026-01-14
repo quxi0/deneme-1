@@ -84,7 +84,7 @@ const AdminPage: React.FC = () => {
   const handleSubmitProject = (e: React.FormEvent) => {
     e.preventDefault();
     
-    // Default fallback image if none provided using strict path standard
+    // Default fallback image if none provided
     const heroImage = pImg || `/assets/rere/project_${Date.now()}.jpg`;
     
     const projectData = {

@@ -2,10 +2,8 @@ import React, { useRef, useEffect, useState } from 'react';
 
 // Configuration
 const FRAME_COUNT = 120;
-const IMAGE_PATH_PREFIX = '/assets/sequence/img_';
+const IMAGE_PATH_PREFIX = '/assets/sequence/img_'; 
 const IMAGE_EXTENSION = '.jpg';
-const CANVAS_WIDTH = 1920;
-const CANVAS_HEIGHT = 1080;
 
 const ScrollSequence: React.FC = () => {
   const canvasRef = useRef<HTMLCanvasElement>(null);
@@ -19,33 +17,42 @@ const ScrollSequence: React.FC = () => {
   // Preload Images
   useEffect(() => {
     let loadedCount = 0;
+    let isMounted = true;
     
+    const checkCompletion = () => {
+      if (!isMounted) return;
+      if (loadedCount === FRAME_COUNT) {
+        setImagesLoaded(true);
+      }
+    };
+
     const preloadImages = () => {
       for (let i = 1; i <= FRAME_COUNT; i++) {
         const img = new Image();
-        // Format: img_001.jpg, img_010.jpg, img_100.jpg
         const formattedIndex = String(i).padStart(3, '0');
         img.src = `${IMAGE_PATH_PREFIX}${formattedIndex}${IMAGE_EXTENSION}`;
         
         img.onload = () => {
-          imagesRef.current[i - 1] = img;
-          loadedCount++;
-          if (loadedCount === FRAME_COUNT) {
-            setImagesLoaded(true);
-            // Initial render
-            renderFrame(0);
+          if (isMounted) {
+            imagesRef.current[i - 1] = img;
+            loadedCount++;
+            checkCompletion();
           }
         };
         
         img.onerror = () => {
-          // Graceful degradation if images are missing (fallback to procedural logic)
-          console.warn(`Missing sequence image: ${img.src}`);
-          imagesRef.current[i - 1] = null;
+          if (isMounted) {
+            // Silence error in console for cleaner logs, or handle fallback
+            imagesRef.current[i - 1] = null;
+            loadedCount++;
+            checkCompletion();
+          }
         };
       }
     };
 
     preloadImages();
+    return () => { isMounted = false; };
   }, []);
 
   // Cinematic Text Stages
@@ -62,15 +69,22 @@ const ScrollSequence: React.FC = () => {
     const context = canvas.getContext('2d');
     if (!context) return;
 
-    // Responsive Canvas
-    const canvasW = canvas.width;
-    const canvasH = canvas.height;
+    // Use Device Pixel Ratio for sharpness on Retina/Mobile screens
+    const dpr = window.devicePixelRatio || 1;
+    const width = window.innerWidth;
+    const height = window.innerHeight;
 
-    context.clearRect(0, 0, canvasW, canvasH);
+    // Reset transform to identity before clearing
+    context.setTransform(1, 0, 0, 1, 0, 0);
+    context.clearRect(0, 0, canvas.width, canvas.height);
+    
+    // Apply scale for high DPI
+    context.scale(dpr, dpr);
+
+    // Background
     context.fillStyle = '#050505';
-    context.fillRect(0, 0, canvasW, canvasH);
+    context.fillRect(0, 0, width, height);
 
-    // 1. Image Sequence Rendering
     if (imagesLoaded) {
       const frameIndex = Math.min(
         FRAME_COUNT - 1,
@@ -80,29 +94,40 @@ const ScrollSequence: React.FC = () => {
       const img = imagesRef.current[frameIndex];
       
       if (img) {
-        // "Cover" fit logic for canvas
-        const scale = Math.max(canvasW / img.width, canvasH / img.height);
-        const x = (canvasW / 2) - (img.width / 2) * scale;
-        const y = (canvasH / 2) - (img.height / 2) * scale;
+        // --- OBJECT-FIT: COVER ALGORITHM ---
+        const imgRatio = img.width / img.height;
+        const canvasRatio = width / height;
         
-        context.drawImage(img, x, y, img.width * scale, img.height * scale);
+        let renderWidth, renderHeight;
+        let offsetX, offsetY;
+
+        if (canvasRatio > imgRatio) {
+          // Canvas is wider than image (crop top/bottom)
+          renderWidth = width;
+          renderHeight = width / imgRatio;
+          offsetX = 0;
+          offsetY = (height - renderHeight) / 2;
+        } else {
+          // Canvas is taller than image (crop left/right)
+          renderHeight = height;
+          renderWidth = height * imgRatio;
+          offsetX = (width - renderWidth) / 2;
+          offsetY = 0;
+        }
+        
+        context.drawImage(img, offsetX, offsetY, renderWidth, renderHeight);
       } else {
-        // Fallback wireframe if image missing
-        drawProceduralFallback(context, canvasW, canvasH, scrollProgress);
+        drawProceduralFallback(context, width, height, scrollProgress);
       }
     } else {
-      // Loading State or Fallback
-      drawProceduralFallback(context, canvasW, canvasH, scrollProgress);
-      
-      // Loading Indicator text
+      drawProceduralFallback(context, width, height, scrollProgress);
       context.fillStyle = '#333';
-      context.font = '12px Space Mono';
-      context.fillText('LOADING SEQUENCE ASSETS...', 20, canvasH - 20);
+      context.font = '10px Space Mono';
+      context.fillText(`LOADING SEQUENCE...`, 20, height - 20);
     }
   };
 
   const drawProceduralFallback = (context: CanvasRenderingContext2D, width: number, height: number, scrollProgress: number) => {
-      // Procedural Art Generation (Simulating Video Frames)
       const size = Math.min(width, height) * 0.4;
       const centerX = width / 2;
       const centerY = height / 2;
@@ -131,14 +156,20 @@ const ScrollSequence: React.FC = () => {
     if (!canvas) return;
 
     const resizeCanvas = () => {
-      canvas.width = window.innerWidth;
-      canvas.height = window.innerHeight;
+      const dpr = window.devicePixelRatio || 1;
+      // Set actual size in memory (scaled to account for extra pixel density)
+      canvas.width = window.innerWidth * dpr;
+      canvas.height = window.innerHeight * dpr;
+      
+      // Set visible size in CSS pixels
+      canvas.style.width = `${window.innerWidth}px`;
+      canvas.style.height = `${window.innerHeight}px`;
+      
       renderFrame(progress);
     };
 
     const handleScroll = () => {
       if (!containerRef.current) return;
-      
       const stickyHeight = containerRef.current.offsetHeight; 
       const viewportHeight = window.innerHeight;
       const startTop = containerRef.current.offsetTop;
@@ -166,15 +197,13 @@ const ScrollSequence: React.FC = () => {
       <div className="sticky top-0 h-screen w-full overflow-hidden">
         <canvas ref={canvasRef} className="block w-full h-full" />
         
-        {/* Floating Text Overlay */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mix-blend-difference pointer-events-none w-full">
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 text-center mix-blend-difference pointer-events-none w-full px-4">
           <h2 className="text-4xl md:text-6xl font-serif text-white transition-all duration-700 ease-out transform">
              {getStageText(progress)}
           </h2>
-          <div className="h-px w-24 bg-white/50 mx-auto mt-4 transition-all duration-700" style={{ width: `${progress * 200}px`}} />
+          <div className="h-px w-24 bg-white/50 mx-auto mt-4 transition-all duration-700" style={{ width: `${Math.max(20, progress * 200)}px`}} />
         </div>
 
-        {/* Scroll Indicator */}
         <div className={`absolute bottom-10 left-1/2 -translate-x-1/2 transition-all duration-500 ${progress > 0.05 ? 'opacity-0' : 'opacity-100'}`}>
           <span className="text-[10px] uppercase tracking-[0.3em] animate-pulse">Begin Sequence</span>
         </div>

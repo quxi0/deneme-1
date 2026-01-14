@@ -8,6 +8,8 @@ interface UIContextType {
   closeConnect: () => void;
   cursorVariant: CursorVariant;
   setCursorVariant: (variant: CursorVariant) => void;
+  cursorText: string;
+  setCursorText: (text: string) => void;
 }
 
 const UIContext = createContext<UIContextType | undefined>(undefined);
@@ -15,6 +17,7 @@ const UIContext = createContext<UIContextType | undefined>(undefined);
 export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
   const [isConnectOpen, setIsConnectOpen] = useState(false);
   const [cursorVariant, setCursorVariant] = useState<CursorVariant>('default');
+  const [cursorText, setCursorText] = useState('');
 
   const openConnect = () => setIsConnectOpen(true);
   const closeConnect = () => setIsConnectOpen(false);
@@ -25,7 +28,9 @@ export const UIProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
       openConnect, 
       closeConnect, 
       cursorVariant, 
-      setCursorVariant 
+      setCursorVariant,
+      cursorText,
+      setCursorText
     }}>
       {children}
     </UIContext.Provider>
